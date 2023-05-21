@@ -22,17 +22,21 @@ from collections import Counter
 # 
 # Examples:
 # Total Runtime: 1.33 seconds
-# Number of Processed Lines: 560.374
+# Number of Processed Lines: 560.374 (~20 MB)
 # Total Runtime: 55.97 seconds
-# Number of Processed Lines: 22.414.880
+# Number of Processed Lines: 22.414.880 (~750 MB)
 # Total Runtime: 119.87 seconds
-# Number of Processed Lines: 44.829.760
+# Number of Processed Lines: 44.829.760 (~1.5 GB)
+# After memory usage optimization: 
+# Total Runtime: 98.53 seconds
+# Number of Processed Lines: 44.829.760 (~1.5 GB)
+# And memory usage more than halved from around 11 GB for a file this size to 5.5 GB  
 
 # Execution time thresholds for the summary
 thresholds = [10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 # Set the threshold for the maximum number of lines allowed. 
 # Memory usage grows with each parsed line, setting this is a good idea on machines with low amounts of RAM (below 16 GB).
-line_threshold = 500000
+line_threshold = 50000000
 
 def read_and_modify_log_file(file_path, modified_file_path):
     """
@@ -45,34 +49,40 @@ def read_and_modify_log_file(file_path, modified_file_path):
     with open(modified_file_path, 'w') as file:
         file.write(modified_content)
 
+def generate_lines(file_path):
+    """
+    Generator function to read the modified log file and yield lines one by one.
+    """
+    with open(file_path, 'r') as file:
+        for line in file:
+            yield line.strip()
 
 def parse_log_file(file_path):
     """
     Parse the modified log file and extract events with their attributes.
     """
     try:
-        with open(file_path, 'r') as file:
-            logfile = file.read()
-
         events = []
         current_event = {}
+        lines = generate_lines(file_path)
 
-        lines = logfile.strip().split("\n")
-
-        i = 0
-        while i < len(lines):
-            if lines[i] == "AuditV3":
+        for line in lines:
+            if line == "AuditV3":
                 # Start of a new event
+                if current_event:
+                    # Append the previous event to the list
+                    events.append(current_event)
                 current_event = {}
-                current_event["timestamp"] = lines[i + 1]
-                current_event["operation_type"] = lines[i + 2]
-                i += 3
-            else:
+                current_event["timestamp"] = next(lines)
+                current_event["operation_type"] = next(lines)
+            elif current_event:
                 # Attribute line within an event
-                parts = lines[i].split(": ", 1)
+                parts = line.split(": ", 1)
                 if len(parts) == 2:
                     key, value = parts
-                    if key in current_event:
+                    if key == "received":
+                        current_event["received"] = value
+                    elif key in current_event:
                         # Attribute already exists, so convert it to a list if necessary
                         if isinstance(current_event[key], list):
                             current_event[key].append(value)
@@ -81,17 +91,20 @@ def parse_log_file(file_path):
                     else:
                         # New attribute
                         current_event[key] = value
-                i += 1
 
-            if i == len(lines) or lines[i] == "AuditV3":
-                # Calculate the execution time for the current event
-                timestamp = datetime.datetime.strptime(current_event["timestamp"], "%Y-%m-%d-%H:%M:%S.%f%z")
-                received = datetime.datetime.strptime(current_event["received"], "%Y-%m-%d-%H:%M:%S.%f%z")
-                execution_time = (received - timestamp).total_seconds() * 1000
-                current_event["ExecutionTime"] = int(abs(execution_time))
-                events.append(current_event)
+        # Append the last event to the list
+        if current_event:
+            events.append(current_event)
+
+        # Calculate execution time for each event
+        for event in events:
+            timestamp = datetime.datetime.strptime(event["timestamp"], "%Y-%m-%d-%H:%M:%S.%f%z")
+            received = datetime.datetime.strptime(event["received"], "%Y-%m-%d-%H:%M:%S.%f%z")
+            execution_time = (received - timestamp).total_seconds() * 1000
+            event["ExecutionTime"] = int(abs(execution_time))
 
         return events
+
     except IOError as e:
         print(f"Error reading file: {e}")
         return []
