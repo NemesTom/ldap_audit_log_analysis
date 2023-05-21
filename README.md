@@ -20,5 +20,9 @@ Calling just the python file defaults to analysing 'logfile.txt' in the script's
 
 The -performance switch displays data on how long the script ran and how many lines it processed.
 
+The -guicharts switch displays data with matplotlib charts.
+
+If you want to use the -performance or -guicharts arguments you have to specify a logfile first.
+
 As a general rule of thumb every ~500.000 line increases the runtime of the analysis by about
 1.5 second, and the time it takes to analyze a logfile increases linearly with the number of lines. 
