@@ -4,17 +4,22 @@ import datetime
 import re
 import time
 from collections import Counter
+import matplotlib.pyplot as plt
 
 # Use it like this for example: 
 # python ldap_audit_log_analysis.py
 # or like this:
 # python ldap_audit_log_analysis.py 'example.log' 
 # or like this:
-# python ldap_audit_log_analysis.py 'example.log' -performance
+# python ldap_audit_log_analysis.py 'example.log' -performance 
+# or like this:
+# python ldap_audit_log_analysis.py 'example.log' -performance -guistats
 #
 # Calling just the python file defaults to analysing 'logfile.txt' in the script's folder.
 #
 # The -performance switch displays data on how long the script ran and how many lines it processed.
+#
+# The -guicharts switch displays data with matplotlib charts.
 #
 # As a general rule of thumb every ~500.000 line increases the runtime of the analysis by about
 # 1.5 second, and the time it takes to analyze a logfile increases linearly with the number of lines. 
@@ -37,6 +42,34 @@ thresholds = [10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 # Set the threshold for the maximum number of lines allowed. 
 # Memory usage grows with each parsed line, setting this is a good idea on machines with low amounts of RAM (below 16 GB).
 line_threshold = 50000000
+def plot_bar_chart(data, title, x_label, y_label):
+    """
+    Plot a bar chart using the given data.
+    """
+    x = [item[0] for item in data]
+    y = [item[1] for item in data]
+
+    plt.bar(x, y)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_pie_chart(data, title):
+    """
+    Plot a pie chart using the given data.
+    """
+    labels = [item[0] for item in data]
+    values = [item[1] for item in data]
+
+    plt.pie(values, labels=labels, autopct='%1.1f%%')
+    plt.title(title)
+    plt.axis('equal')
+    plt.tight_layout()
+    plt.show()
 
 def read_and_modify_log_file(file_path, modified_file_path):
     """
@@ -334,12 +367,35 @@ def main():
     # Print average execution times
     print("--------------------------------------------------")
     print_summary("Average Execution Times per Operation Type:", average_execution_times.items())
+    if "-guicharts" in sys.argv:
+        plot_bar_chart(
+            average_execution_times.items(),
+            "Average Execution Times per Operation Type",
+            "Operation Type",
+            "Execution Time (ms)"
+        )
+
     # Print total operation counts
     print("--------------------------------------------------")
     print_summary("Total Operation Counts per Operation Type:", operation_type_counts.items())
+    if "-guicharts" in sys.argv:
+        plot_bar_chart(
+            operation_type_counts.items(),
+            "Total Operation Counts per Operation Type",
+            "Operation Type",
+            "Operation Count"
+        )
+
     # Print overall average execution time
     print("--------------------------------------------------")
     print(f"Overall Average Execution Time: {overall_average_execution_time} ms\n")
+    if "-guicharts" in sys.argv:
+        plot_bar_chart(
+            [("Overall Average Execution Time", overall_average_execution_time)],
+            "Overall Average Execution Time",
+            "Metric",
+            "Execution Time (ms)"
+        )
 
     # Get events with the highest execution times
     top_events = get_events_with_highest_execution_times(events, 5)
@@ -359,6 +415,8 @@ def main():
     # Print filter attributes and their occurrences
     print("--------------------------------------------------")
     print_summary("Filter Attributes and Occurrences:", sorted_attributes)
+    if "-guicharts" in sys.argv:
+        plot_pie_chart(sorted_attributes, "Filter Attributes and Occurrences")
 
     # Extract client IPs
     client_ips = extract_client_ips(events)
@@ -367,6 +425,8 @@ def main():
     # Print client IPs with the highest number of events
     print("--------------------------------------------------")
     print_summary("Top Client IPs:", top_client_ips)
+    if "-guicharts" in sys.argv:
+        plot_pie_chart(top_client_ips, "Top Client IPs")
 
     # Extract client IPs and ports
     client_ip_ports = extract_client_ip_ports(events)
@@ -375,12 +435,20 @@ def main():
     # Print client IPs and ports with the highest number of events
     print("--------------------------------------------------")
     print_summary("Top Client IPs with Ports:", top_client_ip_ports)
+    if "-guicharts" in sys.argv:
+        plot_pie_chart(top_client_ip_ports, "Top Client IPs with Ports")
 
     # Calculate execution time distribution
     execution_time_distribution = calculate_execution_time_distribution(events, thresholds)
     # Print execution time distribution
     print("--------------------------------------------------")
     print_execution_time_distribution(execution_time_distribution)
+    if "-guicharts" in sys.argv:
+        for operation_type, counts in execution_time_distribution.items():
+            plot_pie_chart(
+                counts.items(),
+                f"Execution Time Distribution for {operation_type}"
+            )
 
     # End timing the script execution
     end_time = time.time()
