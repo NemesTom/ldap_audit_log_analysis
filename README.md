@@ -1,6 +1,6 @@
 # ldap_audit_log_analysis
  
-In the "Performance Tuning for IBM Security Directory Server" IBM Redbook (https://www.redbooks.ibm.com/abstracts/redp4258.html?Open) there is an "itdsaudit.jar" file that provides some useful statistics on what is in the audit log. (example logfile is from the attachments of the Redbook as well) 
+In the attachments of the "Performance Tuning for IBM Security Directory Server" IBM Redbook (https://www.redbooks.ibm.com/abstracts/redp4258.html?Open) there is an "itdsaudit.jar" file that provides some useful statistics on what is in the audit log. (example logfile in the repo is from the attachments of the Redbook as well) 
 Using a decompiler I was able to look into the jar and it's classes and see what the code does, but I'm not that big on Java, I wanted something in Python.
 This is the result. Does everything the original jar does and more. 
 
@@ -15,6 +15,10 @@ python ldap_audit_log_analysis.py 'example.log'
 or like this:
 
 python ldap_audit_log_analysis.py 'example.log' -performance
+
+or like this:
+
+python ldap_audit_log_analysis.py 'example.log' -performance -guistats
 
 Calling just the python file defaults to analysing 'logfile.txt' in the script's folder.
 
